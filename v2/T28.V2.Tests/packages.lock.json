@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "t28.v2.contracts": {
+        "type": "Project"
+      },
+      "t28.v2.receiver": {
+        "type": "Project",
+        "dependencies": {
+          "T28.V2.Contracts": "[1.0.0, )"
+        }
+      },
+      "t28.v2.server": {
+        "type": "Project",
+        "dependencies": {
+          "T28.V2.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

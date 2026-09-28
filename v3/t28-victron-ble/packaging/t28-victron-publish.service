@@ -1,0 +1,48 @@
+[Unit]
+Description=T28 Victron BLE MQTT publisher (optional, disabled by default)
+# Sibling of t28-victron-ble.service. Reads /run/t28-victron/latest.json only.
+# Unrelated to T28.V2.Server. Other SES Cerbos stay on VRM.
+# No Requires on the BLE scanner, BlueZ, or the RF receiver. Publish failure
+# must never stop or restart RF/audio or the BLE scanner.
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/t28-victron/publish.json
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=t28-victron
+Group=t28-victron
+UMask=0077
+WorkingDirectory=/var/lib/t28-victron
+StateDirectory=t28-victron
+StateDirectoryMode=0750
+ConfigurationDirectory=t28-victron
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/sbin/t28-victron-publish
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# MQTT needs IP. Do not deny outbound addresses. Do not grant raw HCI capabilities.
+ReadOnlyPaths=/etc/t28-victron /run/t28-victron
+InaccessiblePaths=-/etc/t28-victron/keys.json
+# Credentials, if present, are /etc/t28-victron/publish-credentials.json mode 0640.
+# Never load BLE keys. Never put a password in Environment or EnvironmentFile.
+
+[Install]
+WantedBy=multi-user.target

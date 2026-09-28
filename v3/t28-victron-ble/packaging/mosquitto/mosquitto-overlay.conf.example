@@ -1,0 +1,9 @@
+# Example Mosquitto snippet for the T28 WireGuard overlay listener.
+# No live passwords. allow_anonymous false. Listener is overlay-only.
+#
+# Overlay default: mqtt://192.0.2.2:1883 (override the URL if the hub moves).
+
+listener 1883 192.0.2.2
+allow_anonymous false
+password_file /etc/mosquitto/t28-victron.passwd
+acl_file /etc/mosquitto/t28-victron.acl

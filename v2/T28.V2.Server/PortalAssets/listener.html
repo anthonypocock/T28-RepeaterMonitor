@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Listener</title>
+  <style>
+    :root{color-scheme:dark;--ink:#f3f7fa;--muted:#b3c0ca;--line:#385366;--surface:#14212a;--focus:#ffd166;font:16px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#0b141b;color:var(--ink)}
+    main{inline-size:100%;margin:0;padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom))}
+    .listener-grid{position:relative;min-block-size:calc(100vh - 2rem)}
+    .listener-tile{position:absolute;inline-size:min(24rem,100%);touch-action:none;border-radius:1rem}
+    .listener-tile:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .listener-tile.dragging{z-index:1;filter:drop-shadow(0 .75rem 1.25rem #0008)}
+    .listener-frame{display:block;inline-size:100%;block-size:25rem;border:0;border-radius:0;background:#0b141b}
+    .empty{padding:1rem;border:1px solid var(--line);border-radius:1rem;background:var(--surface);color:var(--muted)}
+    .visually-hidden{position:absolute!important;inline-size:1px!important;block-size:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+    @media(max-width:40rem){
+      main{padding-inline:1rem}
+      .listener-grid{display:grid;grid-template-columns:1fr;gap:.75rem;min-block-size:0}
+      .listener-tile{position:static;inline-size:100%}
+      .listener-frame{block-size:25rem}
+    }
+  </style>
+</head>
+<body data-page="listener-index">
+  <main>
+    <p id="layout-help" class="visually-hidden">On desktop, focus a receiver and use Alt plus an arrow key to move it.</p>
+    <section id="list" class="listener-grid" aria-live="polite" aria-describedby="layout-help"></section>
+  </main>
+  <script>
+    const list = document.getElementById('list');
+    const layoutKey = 't28.v2.listener-layout.v1';
+    const desktop = matchMedia('(min-width:40.0625rem)');
+    let fingerprint = '';
+    let drag;
+    let feed;
+    let feedRecovery;
+    let latestFleet = [];
+
+    function safe(value){return typeof value==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(value)}
+    function layouts(){try{const value=JSON.parse(localStorage.getItem(layoutKey)||'{}');return value&&typeof value==='object'?value:{}}catch(_){return {}}}
+    function saveLayout(receiverId,left,top){try{const value=layouts();value[receiverId]={left,top};localStorage.setItem(layoutKey,JSON.stringify(value))}catch(_){}}
+    function tileForFrame(frame){return frame?.closest('.listener-tile')}
+    function clamp(tile,left,top){const width=tile.offsetWidth||384;return {left:Math.max(0,Math.min(Math.round(left),Math.max(0,list.clientWidth-width))),top:Math.max(0,Math.round(top))}}
+    function sizeCanvas(){if(!desktop.matches)return;const bottom=[...list.querySelectorAll('.listener-tile')].reduce((value,tile)=>Math.max(value,tile.offsetTop+tile.offsetHeight),0);list.style.minBlockSize=Math.max(window.innerHeight-32,bottom+16)+'px'}
+    function position(tile,location,persist){if(!desktop.matches)return;const next=clamp(tile,location.left,location.top);tile.style.left=next.left+'px';tile.style.top=next.top+'px';if(persist)saveLayout(tile.dataset.receiverId,next.left,next.top);sizeCanvas()}
+    function arrange(){if(!desktop.matches){list.style.minBlockSize='';return}const saved=layouts(),tiles=[...list.querySelectorAll('.listener-tile')],width=tiles[0]?.offsetWidth||384,columns=Math.max(1,Math.floor((list.clientWidth+16)/(width+16)));tiles.forEach((tile,index)=>{const prior=saved[tile.dataset.receiverId],location=Number.isFinite(prior?.left)&&Number.isFinite(prior?.top)?prior:{left:(index%columns)*(width+16),top:Math.floor(index/columns)*416};position(tile,location,false)});sizeCanvas()}
+    function frameFor(source){return [...list.querySelectorAll('.listener-frame')].find(value=>value.contentWindow===source)}
+    function sendSnapshot(frame){frame?.contentWindow?.postMessage({type:'t28-fleet-snapshot',body:{fleet:latestFleet}},location.origin)}
+
+    window.addEventListener('message',event=>{
+      if(event.origin!==location.origin)return;
+      const frame=frameFor(event.source),tile=tileForFrame(frame),data=event.data;
+      if(!frame||!tile)return;
+      if(data?.type==='t28-listener-frame-height'&&Number.isFinite(data.height)){frame.style.blockSize=Math.max(5,Math.min(62,data.height/16))+'rem';sizeCanvas();return}
+      if(!desktop.matches||!Number.isFinite(data?.screenX)||!Number.isFinite(data?.screenY))return;
+      if(data.type==='t28-listener-drag-start'){drag={tile,startX:data.screenX,startY:data.screenY,left:tile.offsetLeft,top:tile.offsetTop};tile.classList.add('dragging');return}
+      if(!drag||drag.tile!==tile)return;
+      if(data.type==='t28-listener-drag-move'){position(tile,{left:drag.left+data.screenX-drag.startX,top:drag.top+data.screenY-drag.startY},false);return}
+      if(data.type==='t28-listener-drag-end'){position(tile,{left:drag.left+data.screenX-drag.startX,top:drag.top+data.screenY-drag.startY},true);tile.classList.remove('dragging');drag=undefined}
+    });
+
+    function render(fleet){
+      const receivers=fleet.filter(value=>safe(value?.receiverId));
+      const next=receivers.map(value=>value.receiverId).join('|');
+      if(next===fingerprint)return;
+      fingerprint=next;
+      list.replaceChildren(...receivers.map(value=>{
+        const tile=document.createElement('div'),frame=document.createElement('iframe');
+        tile.className='listener-tile';
+        tile.dataset.receiverId=value.receiverId;
+        tile.tabIndex=0;
+        tile.setAttribute('role','group');
+        tile.setAttribute('aria-label','Live listener for '+(value.displayName||value.receiverId));
+        tile.onkeydown=event=>{if(!desktop.matches||!event.altKey||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const step=24,left=tile.offsetLeft+(event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0),top=tile.offsetTop+(event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0);position(tile,{left,top},true)};
+        frame.className='listener-frame';
+        frame.title='Live listener for '+(value.displayName||value.receiverId);
+        frame.allow='autoplay';
+        frame.src='/listener/receiver?receiverId='+encodeURIComponent(value.receiverId)+'&embed=1';
+        frame.onload=()=>sendSnapshot(frame);
+        tile.append(frame);
+        return tile;
+      }));
+      if(!receivers.length)list.innerHTML='<p class="empty">No receivers are configured.</p>';
+      requestAnimationFrame(arrange);
+    }
+
+    function publish(body){
+      if(!body||!Array.isArray(body.fleet))return false;
+      latestFleet=body.fleet;
+      render(latestFleet);
+      list.querySelectorAll('.listener-frame').forEach(sendSnapshot);
+      return true;
+    }
+
+    async function refresh(){
+      try{const response=await fetch('/v2/session?view=listener',{method:'POST',credentials:'same-origin'}),body=response.ok&&await response.json();if(!publish(body))throw 0;return true}
+      catch(_){if(!list.querySelector('.listener-tile'))list.innerHTML='<p class="empty">Receiver list is unavailable; retrying automatically.</p>';return false}
+    }
+
+    function startFeed(){
+      if(feed)return;
+      feed=new EventSource('/v2/events?view=listener');
+      feed.addEventListener('fleet',event=>{try{publish(JSON.parse(event.data))}catch(_){}});
+      feed.onerror=()=>{feed?.close();feed=undefined;if(!list.querySelector('.listener-tile'))list.innerHTML='<p class="empty">Receiver list is unavailable; retrying automatically.</p>';if(!feedRecovery)feedRecovery=setTimeout(async()=>{feedRecovery=undefined;if(await refresh())startFeed()},2000)};
+    }
+
+    function stopFeed(){
+      feed?.close();
+      feed=undefined;
+      if(feedRecovery){clearTimeout(feedRecovery);feedRecovery=undefined}
+    }
+
+    window.addEventListener('resize',arrange);
+    window.addEventListener('pagehide',stopFeed);
+    desktop.addEventListener?.('change',arrange);
+    void refresh().then(startFeed);
+  </script>
+</body>
+</html>

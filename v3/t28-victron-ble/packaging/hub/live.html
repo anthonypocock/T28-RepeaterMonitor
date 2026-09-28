@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T28 Victron last-heard</title>
+<style>
+body { font-family: sans-serif; background: #111; color: #eee; margin: 1.5rem; }
+a { color: #7dcea0; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border-bottom: 1px solid #333; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+.stale { color: #f0a000; }
+.fresh { color: #7dcea0; }
+.also { color: #999; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Victron last-heard</h1>
+  <p><a href="/victron/history">History</a> · <a href="/victron/admin">Admin</a></p>
+</div>
+<p>Realtime last-heard. One row per device even if several receivers hear it. 48h look-back is under History, not charts.</p>
+<table>
+<thead><tr>
+<th>device</th><th>V</th><th>A</th><th>SoC</th><th>heard by</th><th>RSSI</th><th>age</th><th>status</th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+<script>
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+function groupDevices(topics) {
+  const grouped = {};
+  for (const item of Object.values(topics || {})) {
+    const id = item.deviceId || "";
+    if (!id) continue;
+    const age = Number.isFinite(item.ageSeconds) ? item.ageSeconds : 1e9;
+    const host = {
+      hostname: item.hostname || item.receiverId || "",
+      rssiDbm: item.rssiDbm,
+      ageSeconds: item.ageSeconds,
+      stale: !!item.stale
+    };
+    if (!grouped[id]) {
+      grouped[id] = { ...item, alsoHeardBy: [] };
+      grouped[id]._hosts = [host];
+      continue;
+    }
+    grouped[id]._hosts.push(host);
+    const currentAge = Number.isFinite(grouped[id].ageSeconds) ? grouped[id].ageSeconds : 1e9;
+    const prefer = (!item.stale && grouped[id].stale) || age < currentAge;
+    if (prefer) {
+      grouped[id] = { ...item, alsoHeardBy: grouped[id].alsoHeardBy, _hosts: grouped[id]._hosts };
+    }
+  }
+  return Object.values(grouped).map((item) => {
+    const primary = item.hostname || item.receiverId || "";
+    item.alsoHeardBy = (item._hosts || [])
+      .filter((host) => host.hostname && host.hostname !== primary)
+      .sort((a, b) => (a.ageSeconds ?? 1e9) - (b.ageSeconds ?? 1e9));
+    delete item._hosts;
+    return item;
+  }).sort((a, b) => (a.deviceId || "").localeCompare(b.deviceId || ""));
+}
+async function refresh() {
+  const response = await fetch("/heard.json", {cache: "no-store"});
+  const data = await response.json();
+  const rows = Array.isArray(data.devices) && data.devices.length
+    ? data.devices
+    : groupDevices(data.topics);
+  document.getElementById("rows").innerHTML = rows.map((item) => {
+    const stale = item.stale ? "stale" : "fresh";
+    const also = (item.alsoHeardBy || []).map((host) => {
+      const age = host.ageSeconds == null ? "" : `${host.ageSeconds}s`;
+      return `${host.hostname}${age ? " " + age : ""}`;
+    }).join(", ");
+    const heard = also
+      ? `${escapeHtml(item.hostname || "")}<div class="also">also: ${escapeHtml(also)}</div>`
+      : escapeHtml(item.hostname || "");
+    return `<tr class="${stale}">
+      <td>${escapeHtml(item.deviceId || "")}</td>
+      <td>${escapeHtml(item.batteryVoltageV ?? "")}</td>
+      <td>${escapeHtml(item.batteryCurrentA ?? "")}</td>
+      <td>${escapeHtml(item.stateOfChargePercent ?? "")}</td>
+      <td>${heard}</td>
+      <td>${escapeHtml(item.rssiDbm ?? "")}</td>
+      <td>${escapeHtml(item.ageSeconds ?? "")}</td>
+      <td>${stale}</td>
+    </tr>`;
+  }).join("");
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

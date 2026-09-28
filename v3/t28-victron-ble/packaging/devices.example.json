@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "staleAfterSeconds": 90,
+  "commissioningHistory": {
+    "enabled": false,
+    "path": "/var/lib/t28-victron/history.jsonl",
+    "intervalSeconds": 60,
+    "maxBytes": 262144
+  },
+  "devices": [
+    {
+      "id": "house-bank",
+      "address": "02:00:00:00:00:01",
+      "product": "SmartShunt 500A/50mV",
+      "productId": "0xA389"
+    }
+  ]
+}

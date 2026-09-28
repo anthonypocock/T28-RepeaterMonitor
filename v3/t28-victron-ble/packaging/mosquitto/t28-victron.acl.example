@@ -1,0 +1,15 @@
+# Example Mosquitto ACL for the T28 Victron overlay. No live passwords.
+# Split users: receivers must not be able to overwrite the Instant Readout key list.
+#
+# Create users with mosquitto_passwd. Do not commit the password file.
+
+# Hub user on demo-hub: source of truth for devices + IR keys.
+user t28-config
+topic write demo/power/config/#
+topic read demo/power/#
+
+# Receiver user on each Pi: consume fleet config, publish last-heard.
+# Intentionally no write to demo/power/config/#.
+user t28-publish
+topic read demo/power/config/#
+topic write demo/power/heard/#

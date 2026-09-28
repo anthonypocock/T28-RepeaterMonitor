@@ -1,0 +1,35 @@
+{
+  "activeProfileId": "lab-demo-hill",
+  "profiles": [
+    {
+      "profileId": "lab-demo-hill",
+      "number": "371",
+      "displayName": "Demo Hill",
+      "planId": "network-control",
+      "planName": "Demo location 52",
+      "planGroup": "Other approved categories",
+      "executable": "python3",
+      "adapterPath": "/absolute/owner/test/t28_v2_receive.py",
+      "profilePath": "/absolute/owner/test/synthetic-profile-a.json",
+      "synthetic": true,
+      "syntheticReadinessMode": "ready",
+      "thresholdTenths": -1000,
+      "ctcssTenths": 1622
+    },
+    {
+      "profileId": "synthetic-b",
+      "number": "644",
+      "displayName": "Demo location 62",
+      "planId": "shared-air-operations",
+      "planName": "Demo location 58",
+      "planGroup": "Other approved categories",
+      "executable": "python3",
+      "adapterPath": "/absolute/owner/test/t28_v2_receive.py",
+      "profilePath": "/absolute/owner/test/synthetic-profile-b.json",
+      "synthetic": true,
+      "syntheticReadinessMode": "ready",
+      "thresholdTenths": -1000,
+      "ctcssTenths": 1622
+    }
+  ]
+}

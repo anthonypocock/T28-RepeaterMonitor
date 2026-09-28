@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "broker": "mqtt://127.0.0.1:1883",
+  "topic": "demo/power/config/v1",
+  "clientId": "t28-victron-config-sync",
+  "qos": 1,
+  "tls": false
+}

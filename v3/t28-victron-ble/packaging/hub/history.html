@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T28 Victron history</title>
+<style>
+body { font-family: sans-serif; background: #111; color: #eee; margin: 1.5rem; }
+a { color: #7dcea0; }
+.top, .toolbar { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+select { font: inherit; background: #1b1b1b; color: #eee; border: 1px solid #444; padding: 0.3rem 0.5rem; }
+.meta { color: #999; }
+.chart {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  margin: 0.8rem 0 1.2rem;
+  padding: 0.6rem 0.8rem 0.4rem;
+}
+.chart h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.4rem; color: #ccc; }
+.chart canvas { width: 100%; height: 160px; display: block; }
+.empty { color: #f0a000; margin: 1rem 0; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Victron look-back</h1>
+  <p><a href="/victron">Last-heard</a> · <a href="/victron/admin">Admin</a></p>
+</div>
+<p>Last 48 hours, capped at 8MB. Oldest samples drop first.</p>
+<div class="toolbar">
+  <p>
+    <label for="device">Device</label>
+    <select id="device"><option value="">all</option></select>
+  </p>
+  <p id="meta" class="meta"></p>
+</div>
+<p id="empty" class="empty" hidden>No samples yet.</p>
+<div id="charts"></div>
+<script>
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+function fillDevices(samples, selected) {
+  const ids = [...new Set(samples.map((item) => item.deviceId).filter(Boolean))].sort();
+  const select = document.getElementById("device");
+  const current = selected || select.value;
+  select.innerHTML = `<option value="">all</option>` + ids.map((id) =>
+    `<option value="${escapeHtml(id)}"${id === current ? " selected" : ""}>${escapeHtml(id)}</option>`
+  ).join("");
+}
+function points(samples, field) {
+  return samples
+    .map((item) => {
+      const x = Date.parse(item.observedAtUtc || "");
+      const y = Number(item[field]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      return { x, y };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.x - b.x);
+}
+function formatTick(ms) {
+  return new Date(ms).toLocaleString("en-AU", {
+    timeZone: "Australia/Perth",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+function niceRange(values) {
+  if (!values.length) return { min: 0, max: 1 };
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  const pad = (max - min) * 0.12;
+  return { min: min - pad, max: max + pad };
+}
+function drawChart(canvas, series, color) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(0, 0, w, h);
+  const left = 52;
+  const right = 12;
+  const top = 10;
+  const bottom = 28;
+  if (!series.length) {
+    ctx.fillStyle = "#888";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("no data", left, h / 2);
+    return;
+  }
+  const xs = series.map((p) => p.x);
+  const ys = series.map((p) => p.y);
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const yR = niceRange(ys);
+  const xSpan = Math.max(1, xMax - xMin);
+  const ySpan = Math.max(1e-9, yR.max - yR.min);
+  const xOf = (x) => left + ((x - xMin) / xSpan) * (w - left - right);
+  const yOf = (y) => top + (1 - (y - yR.min) / ySpan) * (h - top - bottom);
+  ctx.strokeStyle = "#333";
+  ctx.fillStyle = "#888";
+  ctx.font = "11px sans-serif";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const yVal = yR.min + (ySpan * i) / 4;
+    const y = yOf(yVal);
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(w - right, y);
+    ctx.stroke();
+    ctx.fillText(yVal.toFixed(Math.abs(ySpan) < 5 ? 2 : 1), 6, y + 4);
+  }
+  const ticks = 5;
+  ctx.textAlign = "center";
+  for (let i = 0; i < ticks; i++) {
+    const xVal = xMin + (xSpan * i) / (ticks - 1);
+    ctx.fillText(formatTick(xVal), xOf(xVal), h - 8);
+  }
+  ctx.textAlign = "left";
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  series.forEach((p, i) => {
+    const x = xOf(p.x);
+    const y = yOf(p.y);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = color;
+  series.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(xOf(p.x), yOf(p.y), 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+async function refresh() {
+  const selected = document.getElementById("device").value;
+  const query = selected ? `?device=${encodeURIComponent(selected)}` : "";
+  const response = await fetch("/victron/history.json" + query, {cache: "no-store"});
+  const data = await response.json();
+  const samples = data.samples || [];
+  if (!selected) fillDevices(samples, selected);
+  const kb = data.bytesUsed == null ? "" : `${Math.round(data.bytesUsed / 1024)} KB`;
+  const hours = data.keepHours == null ? "48" : data.keepHours;
+  document.getElementById("meta").textContent = `${samples.length} samples · ${kb} · keep ${hours}h · AWST`;
+  document.getElementById("empty").hidden = samples.length > 0;
+  renderDeviceCharts(samples);
+}
+const METRICS = [
+  { field: "batteryVoltageV", label: "Voltage", color: "#7dcea0" },
+  { field: "batteryCurrentA", label: "Current", color: "#5dade2" },
+  { field: "stateOfChargePercent", label: "SoC", color: "#f0a000" }
+];
+function renderDeviceCharts(samples) {
+  const byDevice = {};
+  for (const item of samples) {
+    const id = item.deviceId || "unknown";
+    (byDevice[id] ||= []).push(item);
+  }
+  const ids = Object.keys(byDevice).sort();
+  const root = document.getElementById("charts");
+  const signature = ids.join("\0");
+  if (root.dataset.devices !== signature) {
+    root.dataset.devices = signature;
+    root.innerHTML = ids.flatMap((id) => METRICS.map((metric) => {
+      const name = escapeHtml(id);
+      return `<section class="chart">
+        <h2>${name} ${metric.label}</h2>
+        <canvas data-device="${name}" data-metric="${metric.field}" width="900" height="160"></canvas>
+      </section>`;
+    })).join("");
+  } else {
+    root.querySelectorAll("section.chart").forEach((section) => {
+      const canvas = section.querySelector("canvas");
+      if (!canvas) return;
+      const metric = METRICS.find((item) => item.field === canvas.dataset.metric);
+      if (!metric) return;
+      section.querySelector("h2").textContent = `${canvas.dataset.device} ${metric.label}`;
+    });
+  }
+  root.querySelectorAll("canvas").forEach((canvas) => {
+    const metric = METRICS.find((item) => item.field === canvas.dataset.metric);
+    if (!metric) return;
+    drawChart(canvas, points(byDevice[canvas.dataset.device] || [], metric.field), metric.color);
+  });
+}
+document.getElementById("device").addEventListener("change", refresh);
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

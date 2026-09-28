@@ -1,0 +1,54 @@
+[Unit]
+Description=T28 Victron SmartShunt BLE sidecar (passive, receive-only)
+# Module root is resolved by ExecStart (runtime.env, then current/victron if
+# present, then /etc/t28-v2/install.env + /opt/t28-v2/releases/<commit>/victron).
+# Do not hardcode /opt/t28-v2/current — that symlink can be empty (t28-rx-pi4).
+After=bluetooth.service
+Wants=bluetooth.service
+# Isolated from RF/audio. No Requires/After/Wants on the receiver agent.
+# Production scan is HCI/mgmt passive. Do not restart bluetoothd.
+ConditionPathExists=/etc/t28-victron/devices.json
+ConditionPathExists=/etc/t28-victron/keys.json
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=t28-victron
+Group=t28-victron
+SupplementaryGroups=bluetooth
+UMask=0077
+WorkingDirectory=/var/lib/t28-victron
+RuntimeDirectory=t28-victron
+RuntimeDirectoryMode=0750
+StateDirectory=t28-victron
+StateDirectoryMode=0750
+ConfigurationDirectory=t28-victron
+LoadCredential=victron-keys:/etc/t28-victron/keys.json
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/sbin/t28-victron-ble
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+RestrictAddressFamilies=AF_UNIX AF_BLUETOOTH
+IPAddressDeny=any
+ReadWritePaths=/run/t28-victron /var/lib/t28-victron
+# Keys stay in the credential file or systemd credential tmpfs. Do not load secrets from an environment file.
+
+[Install]
+WantedBy=multi-user.target

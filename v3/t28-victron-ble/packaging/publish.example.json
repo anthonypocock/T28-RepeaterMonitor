@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "broker": "mqtt://127.0.0.1:1883",
+  "topic": "demo/power/heard/{hostname}/{deviceId}",
+  "clientId": "t28-victron-publish",
+  "qos": 1,
+  "retain": true,
+  "intervalSeconds": 5,
+  "tls": false
+}

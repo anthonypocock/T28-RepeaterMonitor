@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "broker": "mqtt://192.0.2.2:1883",
+  "configTopic": "demo/power/config/v1",
+  "heardTopic": "demo/power/heard/#",
+  "clientId": "t28-victron-hub-config",
+  "qos": 1,
+  "staleAfterSeconds": 90,
+  "pollSeconds": 2,
+  "tls": false
+}

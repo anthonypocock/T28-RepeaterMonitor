@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t28.invalid/schemas/v2-receiver-profiles.schema.json",
+  "title": "T28 v2 owner-local approved receiver profiles",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["activeProfileId", "profiles"],
+  "properties": {
+    "activeProfileId": { "$ref": "#/$defs/profileId" },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 255,
+      "items": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "profileId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "number", "adapterPath", "profilePath", "planId", "planName", "planGroup"],
+      "properties": {
+        "profileId": { "$ref": "#/$defs/profileId" },
+        "number": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "displayName": { "type": ["string", "null"], "maxLength": 64 },
+        "planId": { "$ref": "#/$defs/profileId" },
+        "planName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "planGroup": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "executable": { "type": "string", "minLength": 1, "default": "python3" },
+        "adapterPath": { "type": "string", "minLength": 1 },
+        "profilePath": { "type": "string", "minLength": 1 },
+        "synthetic": { "type": "boolean", "default": false },
+        "syntheticControlMode": { "type": ["string", "null"], "enum": ["valid", "malformed", "mismatch", "timeout", "eof", "duplicate", "out-of-order", null] },
+        "syntheticReadinessMode": { "type": ["string", "null"], "enum": ["ready", "delayed", "malformed", "control", "duplicate", "timeout", "eof", "late", null] },
+        "syntheticDiagnostics": { "type": "boolean", "default": false },
+        "syntheticBurstMilliseconds": { "type": ["integer", "null"], "minimum": 500, "maximum": 550 },
+        "thresholdTenths": { "type": "integer", "minimum": -1000, "maximum": 0, "default": -1000 },
+        "ctcssTenths": { "type": "integer", "default": 1622 }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+[Unit]
+Description=T28 Victron hub last-heard map (demo-hub)
+# Subscribes to demo/power/heard/# and keeps latest payload per topic in
+# /run/t28-victron/heard.json (tmpfs). Capped 48h/8MB SQLite look-back on
+# disk at /var/lib/t28-victron/history.sqlite. No Influx, Grafana, or CSV.
+# Not T28.V2.Server.
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=t28-victron
+Group=t28-victron
+UMask=0077
+WorkingDirectory=/var/lib/t28-victron
+RuntimeDirectory=t28-victron
+RuntimeDirectoryMode=0750
+ConfigurationDirectory=t28-victron
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/sbin/t28-victron-hub-live
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=
+ReadWritePaths=/run/t28-victron /etc/t28-victron /var/lib/t28-victron
+# Live HTTP binds 127.0.0.1 only. Admin writes devices.json (0664) and
+# keys.json (0660); hub-config file-watch republishes retained config.
+# Config dir must be root:t28-victron 2775 so atomic .new files work.
+# Do not run as root. Do not weaken BLE IPAddressDeny.
+
+[Install]
+WantedBy=multi-user.target

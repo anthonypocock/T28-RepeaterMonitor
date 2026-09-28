@@ -1,0 +1,54 @@
+[Unit]
+Description=T28 Victron fleet MQTT config-sync (disabled by default)
+# Networked sibling of t28-victron-ble. Subscribes to retained
+# demo/power/config/v1, writes devices.json + keys.json, and may bounce
+# only t28-victron-ble.service via the scoped root helper.
+# Does not enable BLE if it was disabled. Does not open HCI.
+# Unrelated to T28.V2.Server. Never restart bluetoothd or t28-v2-receiver.
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/t28-victron/config-sync.json
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=t28-victron
+Group=t28-victron
+UMask=0077
+WorkingDirectory=/var/lib/t28-victron
+RuntimeDirectory=t28-victron
+RuntimeDirectoryMode=0750
+StateDirectory=t28-victron
+StateDirectoryMode=0750
+ConfigurationDirectory=t28-victron
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/sbin/t28-victron-config-sync
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+# sudo to the scoped apply helper needs a privilege transition.
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# MQTT needs IP. Do not grant raw HCI capabilities.
+# ProtectSystem=strict makes /etc read-only. The scoped sudo helper inherits
+# this sandbox and must write devices.json + keys.json. Do not mark
+# /etc/t28-victron read-only or inaccessible.
+ReadWritePaths=/run/t28-victron /etc/t28-victron
+# Credentials reuse /etc/t28-victron/publish-credentials.json (t28-publish).
+# Never put a password in Environment.
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "T28.V2.Contracts", "T28.V2.Contracts/T28.V2.Contracts.csproj", "{0192E592-D009-410E-9E51-ADDE3B25F001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "T28.V2.Receiver", "T28.V2.Receiver/T28.V2.Receiver.csproj", "{0192E592-D009-410E-9E51-ADDE3B25F002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "T28.V2.Server", "T28.V2.Server/T28.V2.Server.csproj", "{0192E592-D009-410E-9E51-ADDE3B25F003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "T28.V2.Tests", "T28.V2.Tests/T28.V2.Tests.csproj", "{0192E592-D009-410E-9E51-ADDE3B25F004}"
+EndProject
+Global
+GlobalSection(SolutionConfigurationPlatforms) = preSolution
+Debug|Any CPU = Debug|Any CPU
+Release|Any CPU = Release|Any CPU
+EndGlobalSection
+GlobalSection(ProjectConfigurationPlatforms) = postSolution
+{0192E592-D009-410E-9E51-ADDE3B25F001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F001}.Release|Any CPU.Build.0 = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F002}.Release|Any CPU.Build.0 = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F003}.Release|Any CPU.Build.0 = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{0192E592-D009-410E-9E51-ADDE3B25F004}.Release|Any CPU.Build.0 = Release|Any CPU
+EndGlobalSection
+EndGlobal

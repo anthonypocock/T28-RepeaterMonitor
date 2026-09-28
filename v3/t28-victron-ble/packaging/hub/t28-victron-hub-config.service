@@ -1,0 +1,37 @@
+[Unit]
+Description=T28 Victron hub fleet-config publisher (demo-hub)
+# Sibling of T28.V2.Server, not inside it. Publishes retained
+# demo/power/config/v1 from /etc/t28-victron/devices.json + keys.json.
+# Disabled by default. Do not enable from the RF installer.
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/t28-victron/devices.json
+ConditionPathExists=/etc/t28-victron/keys.json
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/var/lib/t28-victron
+RuntimeDirectory=t28-victron
+RuntimeDirectoryMode=0750
+ConfigurationDirectory=t28-victron
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/sbin/t28-victron-hub-config
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/etc/t28-victron
+ReadWritePaths=/run/t28-victron /var/lib/t28-victron
+# Never put IR keys or MQTT passwords in Environment.
+
+[Install]
+WantedBy=multi-user.target

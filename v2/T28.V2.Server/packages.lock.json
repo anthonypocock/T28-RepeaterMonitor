@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "t28.v2.contracts": {
+        "type": "Project"
+      }
+    }
+  }
+}
